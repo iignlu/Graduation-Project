@@ -30,9 +30,24 @@ def load_model_from_checkpoint(checkpoint_path, model_class, device):
     model.eval()
     return model
 
-checkpoint_path = "swinv2_small_window16_256_epoch_19.pt"
+import requests
+
+MODEL_PATH = "swinv2_small_window16_256_epoch_19.pt"
+MODEL_URL = "https://drive.google.com/uc?export=download&id=1h-DvV6gZIrxFMMnMM_UNLkBV00K5sBE-"
+
+# Download model file automatically if not found
+def download_model():
+    if not os.path.exists(MODEL_PATH):
+        print("Downloading model... This may take a minute.")
+        r = requests.get(MODEL_URL)
+        open(MODEL_PATH, "wb").write(r.content)
+        print("Model downloaded successfully.")
+
+download_model()
+
+# Load model
 model_class = 5
-model = load_model_from_checkpoint(checkpoint_path, model_class, device)
+model = load_model_from_checkpoint(MODEL_PATH, model_class, device)
 
 # -------------------------------------------------
 # Preprocessing functions (exactly like training)
@@ -126,3 +141,4 @@ def predict():
 # -------------------------------------------------
 if __name__ == '__main__':
     app.run(debug=True)
+
