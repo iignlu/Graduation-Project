@@ -1,4 +1,6 @@
-const PREDICT_URL = "https://graduation-backend-auct.onrender.com/predict";
+// ✅ UPDATED BACKEND URL (Railway)
+const PREDICT_URL = "https://graduation-backend-production-ba9e.up.railway.app/predict";
+
 const MAX_FILE_SIZE = 15 * 1024 * 1024; // 15 MB
 const CLASS_MAP = {
     0: {
@@ -23,7 +25,7 @@ const CLASS_MAP = {
     }
 };
 
-let els = {}; // This will be populated after the DOM is ready
+let els = {}; 
 let selectedFile = null;
 let previewDataUrl = "";
 let inFlight = false;
@@ -47,7 +49,6 @@ function toggleTheme() {
     const next = els.body.dataset.theme === "dark" ? "light" : "dark";
     applyTheme(next);
 }
-
 
 function wireEvents() {
     els.themeToggle.addEventListener("click", toggleTheme);
@@ -132,9 +133,8 @@ function enableAnalyze(state) {
 }
 
 async function analyzeImage() {
-    if (!selectedFile || inFlight) {
-        return;
-    }
+    if (!selectedFile || inFlight) return;
+
     inFlight = true;
     enableAnalyze(false);
     els.retryBtn.hidden = true;
@@ -155,6 +155,7 @@ async function analyzeImage() {
 
         const payload = await response.json();
         applyPrediction(payload);
+
     } catch (err) {
         console.error(err);
         showError("Something went wrong with the prediction. Please try again.");
@@ -169,6 +170,7 @@ async function analyzeImage() {
 function applyPrediction(payload) {
     const classId = Number(payload.class_id);
     const info = CLASS_MAP[classId];
+
     if (!info) {
         showError("Received an unexpected class from the model.");
         els.statusText.textContent = "Prediction returned an unknown class.";
@@ -189,26 +191,22 @@ function applyPrediction(payload) {
         label: info.label,
         confidence,
         timestamp: new Date(),
-        thumb: previewDataUrl || payload.image_url || ""
+        thumb: previewDataUrl || ""
     });
 }
 
 function initSliderTicks() {
     els.sliderRail.innerHTML = "";
-    for (let i = 0; i <= 4; i += 1) {
+    for (let i = 0; i <= 4; i++) {
         const tickButton = document.createElement("button");
         tickButton.className = "slider-tick";
         tickButton.type = "button";
         tickButton.style.left = `${(i / 4) * 100}%`;
         tickButton.dataset.classId = String(i);
         tickButton.title = `${CLASS_MAP[i].label} (${i})`;
-        tickButton.addEventListener("click", () => {
-            updateDetailsText(i);
-        });
+        tickButton.addEventListener("click", () => updateDetailsText(i));
         tickButton.addEventListener("keyup", event => {
-            if (event.key === "Enter" || event.key === " ") {
-                updateDetailsText(i);
-            }
+            if (event.key === "Enter" || event.key === " ") updateDetailsText(i);
         });
 
         const label = document.createElement("span");
@@ -240,7 +238,6 @@ function updateSliderHighlight(activeClass, confidence) {
 function updateDetailsText(classId) {
     const info = CLASS_MAP[classId];
     els.classInfo.textContent = info ? info.info : "";
-    els.detailsPanel.style.borderColor = `var(--border)`; // Reset border
 }
 
 function showError(message) {
@@ -249,9 +246,7 @@ function showError(message) {
 
 function addHistoryEntry(entry) {
     history.unshift(entry);
-    if (history.length > 5) {
-        history.pop();
-    }
+    if (history.length > 5) history.pop();
     renderHistory();
 }
 
@@ -260,25 +255,23 @@ function renderHistory() {
         els.historyList.innerHTML = '<li class="helper-text">No predictions yet.</li>';
         return;
     }
-    els.historyList.innerHTML = history
-        .map(item => {
-            const confidencePercent = (item.confidence * 100).toFixed(0);
-            const timestamp = item.timestamp.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
-            const thumbSrc = item.thumb ? item.thumb : "";
-            const thumbMarkup = thumbSrc
-                ? `<img class="history-thumb" src="${thumbSrc}" alt="${item.label} thumbnail">`
-                : `<div class="history-thumb history-thumb--placeholder" aria-hidden="true"></div>`;
-            return `
-                <li class="history-item">
-                    ${thumbMarkup}
-                    <div class="history-meta">
-                        <strong>${item.label} (${item.classId})</strong>
-                        <span>${confidencePercent}% • ${timestamp}</span>
-                    </div>
-                </li>
-            `;
-        })
-        .join("");
+    els.historyList.innerHTML = history.map(item => {
+        const confidencePercent = (item.confidence * 100).toFixed(0);
+        const timestamp = item.timestamp.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+        const thumbMarkup = item.thumb
+            ? `<img class="history-thumb" src="${item.thumb}" alt="${item.label} thumbnail">`
+            : `<div class="history-thumb history-thumb--placeholder" aria-hidden="true"></div>`;
+
+        return `
+            <li class="history-item">
+                ${thumbMarkup}
+                <div class="history-meta">
+                    <strong>${item.label} (${item.classId})</strong>
+                    <span>${confidencePercent}% • ${timestamp}</span>
+                </div>
+            </li>
+        `;
+    }).join("");
 }
 
 function handleReset() {
@@ -318,10 +311,10 @@ function cacheDOMElements() {
 }
 
 document.addEventListener("DOMContentLoaded", () => {
-    cacheDOMElements(); // Find all elements now that the page is loaded
+    cacheDOMElements();
     initTheme();
     initSliderTicks();
-    wireEvents(); // Attach event listeners
+    wireEvents();
     updateDetailsText(0);
     renderHistory();
 });
