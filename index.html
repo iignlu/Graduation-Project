@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Diabetic Retinopathy (DR)</title>
+    <link rel="stylesheet" href="static/styles.css">
+</head>
+
+<body data-theme="light">
+    <header class="app-header" role="banner">
+        <div class="brand">
+            <span class="logo-dot" aria-hidden="true"></span>
+            <h1>Diabetic Retinopathy (DR)</h1>
+        </div>
+        <button id="themeToggle" class="theme-toggle" type="button" aria-pressed="false" aria-label="Toggle theme">
+            <span class="toggle-thumb"></span>
+            <span class="toggle-icon toggle-icon--sun" aria-hidden="true">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
+                    stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="12" cy="12" r="5"></circle>
+                    <line x1="12" y1="1" x2="12" y2="3"></line>
+                    <line x1="12" y1="21" x2="12" y2="23"></line>
+                    <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+                    <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+                    <line x1="1" y1="12" x2="3" y2="12"></line>
+                    <line x1="21" y1="12" x2="23" y2="12"></line>
+                    <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+                    <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+                </svg>
+            </span>
+            <span class="toggle-icon toggle-icon--moon" aria-hidden="true">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
+                    stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+                </svg>
+            </span>
+        </button>
+    </header>
+
+    <section class="info-section disclaimer-note" role="alert">
+        <div class="info-content">
+            <h2 id="disclaimerTitle">
+                <svg class="disclaimer-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"
+                    aria-hidden="true">
+                    <path fill-rule="evenodd"
+                        d="M9.401 3.003c1.155-2 4.043-2 5.197 0l7.5 13c1.155 2-0.289 4.5-2.598 4.5H4.499c-2.31 0-3.753-2.5-2.598-4.5l7.5-13zM12 16a1 1 0 100-2 1 1 0 000 2zm-1-4a1 1 0 011-1h0a1 1 0 110 2h-1a1 1 0 01-1-1z"
+                        clip-rule="evenodd"></path>
+                </svg>
+                Important Disclaimer
+            </h2>
+            <p>This tool provides a preliminary analysis based on a deep learning model and is <strong>not a substitute
+                    for a professional medical diagnosis</strong>. The prediction can be mistaken. Always consult a
+                qualified ophthalmologist for any health concerns. By using this tool, you acknowledge and agree to
+                these terms.</p>
+        </div>
+    </section>
+
+    <main class="app-main">
+        <section class="card upload-card" aria-labelledby="uploadTitle">
+            <div class="card-header">
+                <h2 id="uploadTitle">Upload retinal image</h2>
+                <p class="helper-text">Drag &amp; drop or choose .jpg, .jpeg, .png (max 15&nbsp;MB).</p>
+            </div>
+            <div id="dropZone" class="drop-zone" tabindex="0" role="button" aria-label="Upload retinal image">
+                <input type="file" id="fileInput" accept=".jpg,.jpeg,.png" hidden>
+                <p class="drop-zone__text">Drag &amp; drop your image here</p>
+                <button type="button" id="chooseImage" class="secondary-btn">Choose image</button>
+            </div>
+            <div class="preview" id="imagePreview" aria-live="polite"></div>
+            <p class="error-text" id="uploadError" aria-live="assertive"></p>
+            <div class="action-row">
+                <button type="button" id="analyzeBtn" class="primary-btn" disabled>Analyze</button>
+                <button type="button" id="retryBtn" class="secondary-btn" hidden>Try again</button>
+                <span class="status-text" id="statusText">Select an image to begin.</span>
+            </div>
+        </section>
+
+        <section class="card results-card" id="resultsCard" aria-live="polite" hidden>
+            <div class="results-header">
+                <div>
+                    <h2>Prediction</h2>
+                    <p class="helper-text">Model response from /predict endpoint.</p>
+                </div>
+                <div class="badge" id="classBadge">—</div>
+            </div>
+
+            <div class="slider" role="slider" aria-valuemin="0" aria-valuemax="4" aria-valuenow="0" aria-valuetext=""
+                tabindex="0" aria-readonly="true" id="classSlider">
+                <div class="slider-rail" id="sliderRail">
+                    <!-- ticks populated by JS -->
+                </div>
+            </div>
+
+            <div class="confidence-row">
+                <span id="confidenceLabel">Confidence: —%</span>
+            </div>
+
+            <div class="details-panel" id="detailsPanel">
+                <h3>Class Details</h3>
+                <p id="classInfo" class="details-text"></p>
+            </div>
+
+            <div class="history-panel">
+                <div class="history-header">
+                    <h3>Recent predictions</h3>
+                    <p class="helper-text">Stored locally (last 5).</p>
+                </div>
+                <ul id="historyList" class="history-list" aria-live="polite"></ul>
+            </div>
+
+            <div class="results-footer">
+                <button type="button" class="link-btn" id="uploadAnother">Upload another image</button>
+            </div>
+        </section>
+    </main>
+
+    <section class="info-section" aria-labelledby="infoTitle">
+        <div class="info-content">
+            <h2 id="infoTitle">About Diabetic Retinopathy (DR)</h2>
+            <p>Diabetic retinopathy is a leading cause of blindness among working-age adults. It's a complication of
+                diabetes, caused by high blood sugar levels damaging the light-sensitive tissue at the back of the eye
+                (the retina).</p>
+            <h4>Key Statistics:</h4>
+            <ul>
+                <li>Globally, it's estimated that over <strong>93 million people</strong> have some form of diabetic
+                    retinopathy.</li>
+                <li>Approximately <strong>one-third</strong> of all individuals with diabetes will develop DR.</li>
+                <li>With early detection and timely treatment, the risk of severe vision loss can be reduced by
+                    <strong>95%</strong>.</li>
+            </ul>
+            <p>The condition progresses through several stages, from mild non-proliferative to advanced proliferative
+                DR. Since early stages often have no symptoms, regular retinal screenings are crucial for early
+                detection and effective management to prevent irreversible vision loss.</p>
+        </div>
+    </section>
+
+    <section class="info-section" aria-labelledby="instructorTitle">
+        <div class="info-content">
+            <h2 id="instructorTitle">Our Instructor: Dr. Turki Al lelah</h2>
+            <p>As a cybersecurity expert with a PhD in Computer Science and Cyber Security from Cardiff University, Dr.
+                Al lelah combines academic, government, and industry experience to enhance cybersecurity practices. His
+                expertise includes threat intelligence, penetration testing, network security, AI-driven cybersecurity,
+                cloud security, risk assessment, incident response, and security frameworks. He is passionate about
+                driving cybersecurity innovation through research and collaboration and currently works with the Royal
+                Commission for Jubail and Yanbu.</p>
+        </div>
+    </section>
+
+
+    <section class="info-section" aria-labelledby="teamTitle">
+        <div class="info-content">
+            <h2 id="teamTitle">Project Team</h2>
+            <div class="team-grid">
+                <div class="team-card">
+                    <h3>Abdullah Alshehri</h3>
+                    <p>Computer Science</p>
+                </div>
+                <div class="team-card">
+                    <h3>Majed Almutairi</h3>
+                    <p>Computer Science</p>
+                </div>
+                <div class="team-card">
+                    <h3>Abdurhman Alduraywish</h3>
+                    <p>Computer Science</p>
+                </div>
+                <div class="team-card">
+                    <h3>Soud Alsayari</h3>
+                    <p>Computer Science</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <script src="static/app.js"></script>
+</body>
+
+</html>
