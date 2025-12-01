@@ -1,4 +1,4 @@
-const PREDICT_URL = "/predict"; // changeable
+const PREDICT_URL = "https://graduation-backend-auct.onrender.com/predict";
 const MAX_FILE_SIZE = 15 * 1024 * 1024; // 15 MB
 const CLASS_MAP = {
     0: {
