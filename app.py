@@ -7,6 +7,7 @@ import numpy as np
 from torchvision import transforms as T
 from PIL import Image
 import os
+import requests
 
 # -------------------------------------------------
 # Flask setup
@@ -20,7 +21,22 @@ CORS(app)
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 # -------------------------------------------------
-# Load model from checkpoint (same as notebook)
+# Auto-download the model on first run
+# -------------------------------------------------
+MODEL_PATH = "swinv2_small_window16_256_epoch_19.pt"
+MODEL_URL = "https://drive.google.com/uc?export=download&id=1h-DvV6gZIrxFMMnMM_UNLkBV00K5sBE-"
+
+def download_model():
+    if not os.path.exists(MODEL_PATH):
+        print("Downloading model... This may take a minute.")
+        r = requests.get(MODEL_URL)
+        open(MODEL_PATH, "wb").write(r.content)
+        print("Model downloaded successfully!")
+
+download_model()
+
+# -------------------------------------------------
+# Load model from checkpoint
 # -------------------------------------------------
 def load_model_from_checkpoint(checkpoint_path, model_class, device):
     model = timm.create_model('swinv2_small_window16_256', pretrained=False, num_classes=model_class)
@@ -30,27 +46,11 @@ def load_model_from_checkpoint(checkpoint_path, model_class, device):
     model.eval()
     return model
 
-import requests
-
-MODEL_PATH = "swinv2_small_window16_256_epoch_19.pt"
-MODEL_URL = "https://drive.google.com/uc?export=download&id=1h-DvV6gZIrxFMMnMM_UNLkBV00K5sBE-"
-
-# Download model file automatically if not found
-def download_model():
-    if not os.path.exists(MODEL_PATH):
-        print("Downloading model... This may take a minute.")
-        r = requests.get(MODEL_URL)
-        open(MODEL_PATH, "wb").write(r.content)
-        print("Model downloaded successfully.")
-
-download_model()
-
-# Load model
 model_class = 5
 model = load_model_from_checkpoint(MODEL_PATH, model_class, device)
 
 # -------------------------------------------------
-# Preprocessing functions (exactly like training)
+# Preprocessing helpers
 # -------------------------------------------------
 def crop_image_from_gray(img, tol=7):
     if img.ndim == 2:
@@ -67,14 +67,12 @@ def crop_image_from_gray(img, tol=7):
         img3 = img[:, :, 2][np.ix_(mask.any(1), mask.any(0))]
         return np.stack([img1, img2, img3], axis=-1)
 
-# Transformation identical to notebook testing
-train_transforms_DeiT_base_patch16 = T.Compose([
+train_transforms = T.Compose([
     T.ToTensor(),
     T.Normalize([0.485, 0.456, 0.406],
                 [0.229, 0.224, 0.225])
 ])
 
-# Label mapping
 level_to_category = {
     0: "No_DR",
     1: "Mild",
@@ -84,7 +82,7 @@ level_to_category = {
 }
 
 # -------------------------------------------------
-# Flask routes
+# Routes
 # -------------------------------------------------
 @app.route('/')
 def index():
@@ -100,32 +98,28 @@ def predict():
     img = cv2.imdecode(image_bytes, cv2.IMREAD_COLOR)
     img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
 
-    # ---- Preprocessing identical to notebook ----
     img_cropped = crop_image_from_gray(img)
     if img_cropped.shape[0] == 0 or img_cropped.shape[1] == 0:
-        # Handle cases where cropping removes the entire image
         img_resized = cv2.resize(img, (256, 256))
     else:
         img_resized = cv2.resize(img_cropped, (256, 256))
-    
-    # Apply CLAHE for contrast enhancement
+
+    # CLAHE
     lab = cv2.cvtColor(img_resized, cv2.COLOR_RGB2LAB)
     l, a, b = cv2.split(lab)
-    clahe = cv2.createCLAHE(clipLimit=3.0, tileGridSize=(8,8))
+    clahe = cv2.createCLAHE(clipLimit=3.0, tileGridSize=(8, 8))
     cl = clahe.apply(l)
-    limg = cv2.merge((cl,a,b))
+    limg = cv2.merge((cl, a, b))
     final_img = cv2.cvtColor(limg, cv2.COLOR_LAB2RGB)
-    
-    pil_image = Image.fromarray(final_img)
-    img_tensor = train_transforms_DeiT_base_patch16(pil_image).unsqueeze(0).to(device)
 
-    # ---- Inference ----
+    pil_image = Image.fromarray(final_img)
+    img_tensor = train_transforms(pil_image).unsqueeze(0).to(device)
+
     with torch.no_grad():
         output = model(img_tensor)
         probabilities = torch.nn.functional.softmax(output, dim=1)
         confidence, predicted_class_id = torch.max(probabilities, 1)
 
-    # ---- Prepare JSON response ----
     class_id = predicted_class_id.item()
     confidence_score = confidence.item()
     label = level_to_category.get(class_id, "Unknown")
@@ -137,8 +131,6 @@ def predict():
     })
 
 # -------------------------------------------------
-# Run
+# IMPORTANT: Do NOT run app.run()
+# Railway/Gunicorn will run the server.
 # -------------------------------------------------
-if __name__ == '__main__':
-    app.run(debug=True)
-
