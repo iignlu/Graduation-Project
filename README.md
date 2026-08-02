@@ -21,12 +21,10 @@ December 2025.**
 
 A four-person project, contributions split evenly (25% each).
 
-| Member | |
-|---|---|
-| Saud Riyadh Alsayari |
-| Majed Abdullah Almutairi | 
-| Abdullah Dhafer Alshehri | 
-| Abdurahman Saleh Alduraywish | 
+- Saud Riyadh Alsayari
+- Majed Abdullah Almutairi
+- Abdullah Dhafer Alshehri
+- Abdurahman Saleh Alduraywish
 
 **Supervisor:** Dr. Turki Al Lelah
 
