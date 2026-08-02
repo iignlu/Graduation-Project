@@ -305,6 +305,33 @@ One thing to watch when redeploying: the checkpoint downloads at import time, so
 is slow and the platform's health check may time out before the model finishes loading. Baking
 the checkpoint into the image, or fetching it from object storage, avoids that.
 
+### Hugging Face Space (`space/`)
+
+Most free hosting tiers cap out at 512 MB of RAM, which is not enough for PyTorch plus a
+~196 MB checkpoint. `space/` therefore holds a **Gradio** port of the app for
+[Hugging Face Spaces on ZeroGPU](https://huggingface.co/docs/hub/en/spaces-zerogpu), where free
+personal accounts can host up to two Spaces at no cost.
+
+The preprocessing is identical to `backend/app.py` — same border crop, same 256×256 resize, same
+CLAHE parameters, same ImageNet normalisation — so predictions match.
+
+```
+space/
+├── app.py             # Gradio UI + @spaces.GPU inference
+├── requirements.txt   # torch >= 2.8.0, as ZeroGPU requires
+└── README.md          # Space config (YAML frontmatter)
+```
+
+To deploy it:
+
+1. Upload the checkpoint to a Hugging Face **model** repo (keeps the Space small and its
+   rebuilds fast), then set `MODEL_REPO_ID` and `MODEL_FILENAME` in the Space to match.
+2. Create a **Gradio** Space, set its hardware to **ZeroGPU**, and push the contents of
+   `space/`.
+
+Note that ZeroGPU requires **torch ≥ 2.8.0** and the Gradio SDK — the `torch==2.0.1+cpu` pin in
+`backend/requirements.txt` is for the CPU deployment and will not work there.
+
 ---
 
 ## Tech stack

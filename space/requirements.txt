@@ -1,0 +1,11 @@
+# ZeroGPU requires torch >= 2.8.0 — the 2.0.1 pin used for the CPU deploy
+# will not run there.
+torch>=2.8.0
+torchvision
+timm>=1.0.0
+gradio>=5.0.0
+spaces
+opencv-python-headless
+numpy
+pillow
+huggingface_hub
