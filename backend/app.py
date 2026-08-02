@@ -12,7 +12,16 @@ import requests
 # -------------------------------------------------
 # Flask setup
 # -------------------------------------------------
-app = Flask(__name__, template_folder='.')
+# The web client lives in ../frontend, so serve it from there. This lets the
+# repo run as one piece locally; in production the client can still be hosted
+# separately and call /predict cross-origin (CORS is enabled below).
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+FRONTEND_DIR = os.path.join(BASE_DIR, '..', 'frontend')
+
+app = Flask(__name__,
+            template_folder=FRONTEND_DIR,
+            static_folder=os.path.join(FRONTEND_DIR, 'static'),
+            static_url_path='/static')
 CORS(app)
 
 # -------------------------------------------------
