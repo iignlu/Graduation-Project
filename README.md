@@ -23,10 +23,10 @@ A four-person project, contributions split evenly (25% each).
 
 | Member | |
 |---|---|
-| Saud Riyadh Alsayari | 431900784 |
-| Majed Abdullah Almutairi | 431900585 |
-| Abdullah Dhafer Alshehri | 431900855 |
-| Abdurahman Saleh Alduraywish | 431900792 |
+| Saud Riyadh Alsayari |
+| Majed Abdullah Almutairi | 
+| Abdullah Dhafer Alshehri | 
+| Abdurahman Saleh Alduraywish | 
 
 **Supervisor:** Dr. Turki Al Lelah
 
