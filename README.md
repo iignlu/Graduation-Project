@@ -3,23 +3,42 @@
 A web application that grades the severity of **diabetic retinopathy** from a retinal fundus
 photograph, using a fine-tuned Swin Transformer V2 vision model.
 
-Upload a retinal image, and the model returns one of five severity levels along with a
-confidence score and an explanation of what that stage means.
+Upload a retinal image, and the model returns one of five severity levels with a confidence
+score and an explanation of what that stage means.
 
-**BSc Computer Science graduation project — Jubail Industrial College, 2026.**
+**CS 473 Graduation Project — Computer and Information Technology, Jubail Industrial College.
+December 2025.**
 
 > [!WARNING]
 > **This is a student research project, not a medical device.** It has not been clinically
-> validated, approved, or reviewed by any regulatory body. Nothing it outputs is a diagnosis.
-> Never use it to make a decision about anyone's health — screening for diabetic retinopathy
-> must be done by a qualified ophthalmologist.
+> validated, approved, or reviewed by any regulatory body, and its accuracy figures come from a
+> held-out split of a public dataset — not from clinical trials. Nothing it outputs is a
+> diagnosis. Screening for diabetic retinopathy must be done by a qualified ophthalmologist.
+
+---
+
+## Team
+
+A four-person project, contributions split evenly (25% each).
+
+| Member | |
+|---|---|
+| Saud Riyadh Alsayari | 431900784 |
+| Majed Abdullah Almutairi | 431900585 |
+| Abdullah Dhafer Alshehri | 431900855 |
+| Abdurahman Saleh Alduraywish | 431900792 |
+
+**Supervisor:** Dr. Turki Al Lelah
 
 ---
 
 ## Contents
 
 - [How it works](#how-it-works)
+- [Dataset and training](#dataset-and-training)
+- [Results](#results)
 - [Severity scale](#severity-scale)
+- [Scope: what is built](#scope-what-is-built)
 - [Project structure](#project-structure)
 - [Running it locally](#running-it-locally)
 - [API](#api)
@@ -45,18 +64,18 @@ flowchart LR
 
 Fundus photographs arrive with a large black border around the circular retina, and with wildly
 inconsistent exposure between cameras and clinics. Three steps normalise that before the model
-ever sees the image:
+sees the image:
 
 1. **Border crop** — pixels are thresholded against a grey tolerance and the image is cropped to
    the bounding box of what survives, removing the black surround so the retina fills the frame.
-2. **Resize to 256×256** — matches the input resolution the model was trained at.
+2. **Resize to 256×256** — matches the resolution the model was trained at.
 3. **CLAHE** — the image is converted to LAB colour space and Contrast Limited Adaptive
    Histogram Equalisation (`clipLimit=3.0`, `tileGridSize=8×8`) is applied to the **L**
    (lightness) channel only, then converted back to RGB. Equalising lightness without touching
    the **a**/**b** colour channels lifts local contrast — making microaneurysms and haemorrhages
    more visible — without shifting the colour balance the model relies on.
 
-Finally the tensor is normalised with the standard ImageNet mean and standard deviation.
+The tensor is then normalised with the standard ImageNet mean and standard deviation.
 
 ### Model
 
@@ -67,8 +86,38 @@ attention, so it captures both the fine local detail that early-stage lesions co
 whole-retina context, at a fraction of the cost of full global attention.
 
 Inference runs under `torch.no_grad()`, on CUDA when a GPU is present and on CPU otherwise.
-The output logits pass through a softmax; the highest-probability class becomes the label and
-its probability becomes the reported confidence.
+Output logits pass through a softmax; the highest-probability class becomes the label and its
+probability becomes the reported confidence.
+
+---
+
+## Dataset and training
+
+Trained and validated on the public
+[Kaggle Diabetic Retinopathy Detection](https://www.kaggle.com/c/diabetic-retinopathy-detection)
+dataset, via transfer learning from pretrained SwinV2 weights.
+
+Two problems dominated training:
+
+- **Class imbalance.** The dataset is heavily skewed toward Stage 0 (No DR), which pushes a
+  naively trained model toward always predicting the majority class. Addressed with **class
+  weighting** in the loss so under-represented severity stages carry proportionally more weight.
+- **Overfitting.** Managed with regularisation and cross-validation to check the model
+  generalised rather than memorising the training split.
+
+---
+
+## Results
+
+| Metric | Value |
+|---|---|
+| Training accuracy | ~97.6% |
+| Validation accuracy | ~95.7% |
+
+Measured on the Kaggle dataset split during development. Treat these as evidence the approach
+works, not as clinical performance — accuracy on a curated public dataset does not transfer
+directly to real screening conditions, and the gap between training and validation suggests some
+residual overfitting.
 
 ---
 
@@ -76,13 +125,38 @@ its probability becomes the reported confidence.
 
 The model grades on the standard five-point international scale:
 
-| Level | Label | What it means |
+| Stage | Label | Description |
 |:---:|---|---|
-| 0 | **No DR** | No abnormalities detected. Annual screening should continue. |
-| 1 | **Mild** | Microaneurysms — small areas of swelling in retinal blood vessels. Vision is typically unaffected. |
-| 2 | **Moderate** | More significant vessel damage that may lead to blockages. Warrants closer monitoring. |
-| 3 | **Severe** | Many vessels blocked, starving areas of the retina of blood supply and triggering new vessel growth. |
-| 4 | **Proliferative DR** | The most advanced stage. Fragile new vessels (neovascularisation) can bleed, risking severe vision loss. |
+| 0 | **No DR** | No signs of disease; retina appears normal. |
+| 1 | **Mild** | Presence of microaneurysms only. Vision is typically unaffected. |
+| 2 | **Moderate** | Multiple microaneurysms, scattered intraretinal haemorrhages and/or soft exudates. |
+| 3 | **Severe** | Extensive retinal haemorrhages or vascular blockage; features indicate imminent progression. |
+| 4 | **Proliferative DR** | Formation of new abnormal blood vessels (neovascularisation); highest risk of vision loss. |
+
+---
+
+## Scope: what is built
+
+This repository is the **working prototype**. The specification written for the course was
+broader than what was implemented, so to be clear about where the line falls:
+
+**Implemented and working**
+
+- Full preprocessing pipeline — border crop, resize, CLAHE
+- SwinV2 inference producing a 0–4 stage with a confidence score
+- `POST /predict` REST endpoint
+- Web client — drag-and-drop upload, 15 MB cap, image preview, severity slider, per-stage
+  explanations, session history, light/dark theme
+- Flask runtime serving both the API and the client
+
+**Designed but not implemented**
+
+- PostgreSQL persistence — schema designed (`patients`, `predictions`, `users`), not wired up
+- JWT authentication and role management
+- Clinician dashboard for multi-case review
+- Grad-CAM heatmaps for visual explanation of predictions
+- Cloud deployment, EHR integration (HL7/FHIR, DICOM)
+- Automatic low-quality-image flagging and the "confidence < 70% → manual review" rule
 
 ---
 
@@ -101,9 +175,9 @@ The model grades on the standard five-point international scale:
         └── styles.css     # Light/dark theme
 ```
 
-The client is a dependency-free single page: drag-and-drop or file-picker upload, a 15 MB size
-cap, an image preview, a severity slider that highlights the predicted class, per-class
-explanations, a session history of previous predictions, and a light/dark theme toggle.
+The model was trained in a separate Jupyter notebook
+(`diabetic_retinopathy_using_swin.ipynb`); this repository holds the inference service and
+client. The trained checkpoint is downloaded at runtime rather than committed.
 
 ---
 
@@ -201,16 +275,7 @@ the checkpoint into the image, or fetching it from object storage, avoids that.
 
 ## Tech stack
 
-**Backend** — Python · Flask · flask-cors · PyTorch · timm · OpenCV · NumPy · Pillow · gunicorn
-**Model** — Swin Transformer V2 Small (`swinv2_small_window16_256`), 5-class fine-tune
+**Backend** — Python 3.10 · Flask · flask-cors · gunicorn
+**Machine learning** — PyTorch · timm · Swin Transformer V2 Small · OpenCV · NumPy · Pillow
 **Frontend** — HTML · CSS · JavaScript, no framework and no build step
-
----
-
-## Author
-
-**Abdullah Alshehri** — BSc Computer Science, Jubail Industrial College
-
-[aalshehri.site](https://aalshehri.site) ·
-[LinkedIn](https://www.linkedin.com/in/abdullah-alshehri-596658250/) ·
-[GitHub](https://github.com/iignlu)
+**Tools** — Git · GitHub · VS Code · Jupyter
