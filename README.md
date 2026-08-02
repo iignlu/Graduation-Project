@@ -93,31 +93,56 @@ probability becomes the reported confidence.
 
 ## Dataset and training
 
-Trained and validated on the public
-[Kaggle Diabetic Retinopathy Detection](https://www.kaggle.com/c/diabetic-retinopathy-detection)
-dataset, via transfer learning from pretrained SwinV2 weights.
+Trained on the public
+[APTOS 2019 Blindness Detection](https://www.kaggle.com/c/aptos2019-blindness-detection)
+dataset — 3,662 labelled fundus photographs — via transfer learning from pretrained SwinV2
+weights. The full training run lives in
+[`notebook/diabetic_retinopathy_using_swin.ipynb`](notebook/diabetic_retinopathy_using_swin.ipynb),
+including the exploratory analysis, preprocessing, training loop and evaluation plots.
 
-Two problems dominated training:
+| Setting | |
+|---|---|
+| Backbone | `swinv2_small_window16_256`, ImageNet-pretrained, head resized to 5 classes |
+| Optimiser | AdamW |
+| Loss | `CrossEntropyLoss` with balanced class weights |
+| Epochs | 25 |
+| Batch size | 32 |
+| Input | 256×256, border-cropped + CLAHE |
+| Hardware | Google Colab GPU |
 
-- **Class imbalance.** The dataset is heavily skewed toward Stage 0 (No DR), which pushes a
-  naively trained model toward always predicting the majority class. Addressed with **class
-  weighting** in the loss so under-represented severity stages carry proportionally more weight.
-- **Overfitting.** Managed with regularisation and cross-validation to check the model
-  generalised rather than memorising the training split.
+**Class imbalance** was the dominant problem: APTOS 2019 is heavily skewed toward Stage 0
+(No DR), which pushes a naively trained model toward always predicting the majority class.
+Per-class weights computed with scikit-learn's `compute_class_weight('balanced', …)` were passed
+into the loss, so under-represented severity stages carry proportionally more weight.
 
 ---
 
 ## Results
 
+The shipped checkpoint is **epoch 19**:
+
 | Metric | Value |
 |---|---|
-| Training accuracy | ~97.6% |
-| Validation accuracy | ~95.7% |
+| Training accuracy | 98.27% |
+| **Validation accuracy** | **98.44%** |
+| Validation loss | 0.0569 |
 
-Measured on the Kaggle dataset split during development. Treat these as evidence the approach
-works, not as clinical performance — accuracy on a curated public dataset does not transfer
-directly to real screening conditions, and the gap between training and validation suggests some
-residual overfitting.
+Validation accuracy across the full 25-epoch run, for context:
+
+| Epoch | 5 | 10 | 15 | **19** | 20 | 23 | 25 |
+|---|---|---|---|---|---|---|---|
+| Val. accuracy | 91.62% | 95.45% | 98.72% | **98.44%** | 98.72% | 98.86% | 97.44% |
+
+The run peaked at **98.86%** (epoch 23). Validation accuracy is noisy between epochs — it swings
+by several points either way well into training — so the single-epoch figure should be read as
+approximate rather than exact.
+
+> [!NOTE]
+> Treat these as evidence the approach works, not as clinical performance. Accuracy on a
+> curated, well-lit public dataset does not transfer directly to real screening conditions, and
+> plain accuracy is a weak metric on an imbalanced 5-class problem — per-class recall or
+> quadratic-weighted kappa (the metric the APTOS competition itself used) would say considerably
+> more about whether the model catches the severe cases that actually matter.
 
 ---
 
@@ -168,16 +193,21 @@ broader than what was implemented, so to be clear about where the line falls:
 │   ├── app.py             # Flask API — preprocessing, model loading, /predict
 │   ├── requirements.txt   # CPU-only torch build, pinned
 │   └── runtime.txt        # Python 3.10
-└── frontend/
-    ├── index.html         # Single-page client
-    └── static/
-        ├── app.js         # Upload, drag-and-drop, API call, result rendering
-        └── styles.css     # Light/dark theme
+├── frontend/
+│   ├── index.html         # Single-page client
+│   └── static/
+│       ├── app.js         # Upload, drag-and-drop, API call, result rendering
+│       └── styles.css     # Light/dark theme
+└── notebook/
+    └── diabetic_retinopathy_using_swin.ipynb   # Training, evaluation, plots
 ```
 
-The model was trained in a separate Jupyter notebook
-(`diabetic_retinopathy_using_swin.ipynb`); this repository holds the inference service and
-client. The trained checkpoint is downloaded at runtime rather than committed.
+The client is a dependency-free single page: drag-and-drop or file-picker upload, a 15 MB size
+cap, an image preview, a severity slider that highlights the predicted class, per-class
+explanations, a session history of previous predictions, and a light/dark theme toggle.
+
+The trained checkpoint (`swinv2_small_window16_256_epoch_19.pt`, ~196 MB) is **not committed** —
+it exceeds GitHub's 100 MB per-file limit. It is fetched at runtime instead; see below.
 
 ---
 
@@ -205,6 +235,10 @@ pip install -r requirements.txt
 > pip install gdown
 > gdown 1h-DvV6gZIrxFMMnMM_UNLkBV00K5sBE- -O swinv2_small_window16_256_epoch_19.pt
 > ```
+>
+> A sturdier home for the checkpoint would be a **GitHub Release** — releases accept assets up
+> to 2 GB, so the 196 MB file fits comfortably, gets a stable URL that never expires, and needs
+> no confirmation-token handling.
 
 ### Start it
 
